@@ -1,0 +1,10 @@
+LR = 1 * 1e-4
+weight = [1, 1]
+optimizer_choice = 'Adam'  # 'Adam'
+lr_scheduler_choice = 'Plateau'  # 'Cosine'
+momentum = 0.9
+weight_decay = 2 * 1e-8
+min_lr = LR / 2000
+factor = 0.1
+patience = 10
+eta_min = min_lr
