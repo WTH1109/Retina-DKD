@@ -12,13 +12,15 @@ See `requirements.txt`
 
 ## 2. Dataset
 
-1. The training data and testing data is from the XXX, we will provide `data` and `data_test` 
+1. The training data and testing data is from the XXX, we will provide `data` and `data_test` , and pre-trained models.
 
 2. Put `data` and `data_test`  under the root directory 
 
 3. You can choose to build your own training set, named `cls` + `peugeot` . You can change `-d` to specify the training set while training and testing.  But you need to ensure that its file structure is as follows
 
    <img src="D:\Git\Retina-DKD\img\tree.png" style="zoom: 30%;" />
+
+
 
 ## 3. Training
 
@@ -42,11 +44,17 @@ If you want to train a model that uses only fundus images, use the below command
 python train_cls.py -b resnet-wam -g 0 -bc 8 -e 150 -d _dkd
 ```
 
+
+
 ## 4. Test
 
 Modify the config file  `config/test_config.yaml` to select a different test configuration
 
 After that you can run `python test_run.py` to run the test code
+
+Beside, we will provide a pre-trained TransMUF model and a segmented network model, and place them under the `model/`,`code_seg/model/` .
+
+
 
 ### test config
 
@@ -103,7 +111,7 @@ See Folder `code_seg`
 
 
 
-## 5. Compared Methods and Ablation Study
+## 6. Compared Methods and Ablation Study
 
 If you are interested in our ablation study, the code for the comparison and ablation experiments is included in the `network.py` .
 
@@ -121,14 +129,16 @@ python train_fusion.py -b m1 -g 0 -bc 8 -e 150 -d _dkd
 
 
 
-## 6. Network Interpretability
+## 7. Network Interpretability
 
 Run the grad-cam test program to get a visual image of the network (see Test)
 
 The visualization will be placed under the `Vis_result` folder
 
-<img src="D:\Git\Retina-DKD\img\vis.png" style="zoom: 20%;" />
+<img src="D:\Git\Retina-DKD\img\vis.png" style="zoom: 80%;" />
 
-## 7. Contact
+
+
+## 8. Contact
 
 If any question, please contact [[wengtaohan1109@gmail.com](wengtaohan1109@gmail.com)]
