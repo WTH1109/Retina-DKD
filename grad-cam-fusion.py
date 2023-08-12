@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from data_pre_process.data_process import DRDataset_Multidata_factor_5
+from data_pre_process.data_process import DrdatasetMultidataFactor5
 from grad_cam_model import GradCAM
 from grad_cam_model.cam_utils import show_cam_on_image
 from grad_cam_model.get_target_layer import get_nn_target_layer
@@ -55,62 +55,40 @@ else:
 
 
 main_dataset = 'data/cls' + pars.dataset + '/'
-set1_147 = 'data_test/set1/fundus/set1_147/'
-set1_148 = 'data_test/set1/fundus/set1_148/'
-set1_295 = 'data_test/set1/fundus/set1_295/'
-set2 = 'data_test/set2/'
-set1_148_no_normal = 'data_test/set1-148-nonormal'
-set2_new = 'data_test/set2_new/'
-main_ori = 'data/cls_ori/'
+Prospective = 'data_test/Prospective/fundus/Prospective/'
+Multi_center = 'data_test/Multi_center/'
+Non_standard = 'data_test/Non_standard/'
 dataset_dic = {
     'main': main_dataset,
-    'set1_147': set1_147,
-    'set1_148': set1_148,
-    'set1_295': set1_295,
-    'set2': set2,
-    'set1_148_no_nor': set1_148_no_normal,
-    'set2_new': set2_new,
-    'main_ori': main_ori
+    'Prospective': Prospective,
+    'Multi_center': Multi_center,
+    'Non_standard': Non_standard
 }
 set_dir = dataset_dic[pars.set]
 
 main_disk = 'data/seg/disk/'
-disk1_147 = 'data_test/set1/seg/disk/set1_147/'
-disk1_148 = 'data_test/set1/seg/disk/set1_148/'
-disk1_295 = 'data_test/set1/seg/disk/set1_295/'
-disk2 = 'data_test/set2/seg/disk/'
-disk2_new = 'data_test/set2_new/seg/disk'
-main_ori_disk = 'data/seg_ori/disk/'
+disk_Prospective = 'data_test/Prospective/seg/disk/Prospective/'
+disk_Non_standard = 'data_test/Prospective/seg/disk/Non_standard/'
+disk_Multi = 'data_test/Multi_center/seg/disk/'
 
 disk_dic = {
     'main': main_disk,
-    'set1_147': disk1_147,
-    'set1_148': disk1_148,
-    'set1_295': disk1_295,
-    'set2': disk2,
-    'set1_148_no_nor': disk1_148,
-    'set2_new': disk2_new,
-    'main_ori': main_ori_disk
+    'Prospective': disk_Prospective,
+    'Multi_center': disk_Multi,
+    'Non_standard': disk_Non_standard,
 }
 disk_dir = disk_dic[pars.set]
 
 main_lesion = 'data/seg/lesion/'
-lesion1_147 = 'data_test/set1/seg/lesion/set1_147/'
-lesion1_148 = 'data_test/set1/seg/lesion/set1_148/'
-lesion1_295 = 'data_test/set1/seg/lesion/set1_295/'
-lesion2 = 'data_test/set2/seg/lesion/'
-lesion2_new = 'data_test/set2_new/seg/lesion/'
-main_ori_lesion = 'data/seg_ori/lesion/'
+lesion_Prospective = 'data_test/Prospective/seg/lesion/Prospective/'
+lesion_Non_standard = 'data_test/Prospective/seg/lesion/Non_standard/'
+lesion_Multi = 'data_test/Multi_center/seg/lesion/'
 
 lesion_dic = {
     'main': main_lesion,
-    'set1_147': lesion1_147,
-    'set1_148': lesion1_148,
-    'set1_295': lesion1_295,
-    'set2': lesion2,
-    'set1_148_no_nor': lesion1_148,
-    'set2_new': lesion2_new,
-    'main_ori': main_ori_lesion
+    'Prospective': lesion_Prospective,
+    'Multi_center': lesion_Multi,
+    'Non_standard': lesion_Non_standard,
 }
 lesion_dir = lesion_dic[pars.set]
 
@@ -120,11 +98,11 @@ model_dir = 'model/' + model_name + '/'
 if_after = True
 isolate = True
 
-if set_dir == main_dataset or set_dir == main_ori:
+if set_dir == main_dataset:
     isolate = False
 else:
     isolate = True
-if set_dir == set1_147 or set_dir == set1_148 or set_dir == set1_295 or set_dir == set1_148_no_normal or set_dir == set2_new:
+if set_dir == Prospective or set_dir == Non_standard:
     if_after = False
 else:
     if_after = True
@@ -132,27 +110,15 @@ else:
 if set_dir == main_dataset:
     dataset = dataset + '_maindata_test'
     xlsx_path = 'data/risk_factor_5.xlsx'
-elif set_dir == set1_147:
-    dataset = dataset + '_set1_147'
-    xlsx_path = 'data/set1_5.xlsx'
-elif set_dir == set1_148:
-    dataset = dataset + '_set1_148'
-    xlsx_path = 'data/set1_5.xlsx'
-elif set_dir == set1_295:
-    dataset = dataset + '_set1_295'
-    xlsx_path = 'data/set1_5.xlsx'
-elif set_dir == set2:
-    dataset = dataset + '_set2'
-    xlsx_path = 'data/set2_new_5.xlsx'
-elif set_dir == set1_148_no_normal:
-    dataset = dataset + '_set1_148_no'
-    xlsx_path = 'data/set1_5.xlsx'
-elif set_dir == set2_new:
-    dataset = dataset + '_set2_new'
-    xlsx_path = 'data/set2_new_5.xlsx'
-elif set_dir == main_ori:
-    dataset = dataset + '_mainori_test'
-    xlsx_path = 'data/risk_factor_5.xlsx'
+elif set_dir == Prospective:
+    dataset = dataset + '_Prospective'
+    xlsx_path = 'data/Prospective_5.xlsx'
+elif set_dir == Multi_center:
+    dataset = dataset + '_Multi_center'
+    xlsx_path = 'data/Multi_center_5.xlsx'
+elif set_dir == Non_standard:
+    dataset = dataset + '_Non_standard_no'
+    xlsx_path = 'data/Prospective_5.xlsx'
 
 
 def remove_all_file(path):
@@ -202,21 +168,24 @@ if __name__ == '__main__':
         remove_all_file('Vis_result/' + model_name + '_ep' + '/' + pars.set + '/' + str(test_epoch) + '/GT_NDRD_P_NDRD')
 
     net = KeNetMultFactorNew(classes_num=2, basic_model=basic_model, windows_attention=windows_attention,
-                             pretrain=False, windows_num=pars.win_num, initial_method="Uniform", k=0.8,
-                             layer_num=pars.layer, lb_weight=pars.lamb).cuda(device_ids[0])
+                            pretrain=False, windows_num=pars.win_num, initial_method="Uniform", k=0.8,
+                            layer_num=pars.layer,lb_weight=pars.lamb).cuda(device_ids[0])
     target_layer = get_nn_target_layer(net, basic_model)
     net = torch.nn.DataParallel(net, device_ids)  # multi-GPUs
-    a = torch.load(model_dir + 'net_' + str(test_epoch) + '.pth', map_location='cpu')
+    ep_s = str(test_epoch)
+    while len(ep_s) < 3:
+        ep_s = '0' + ep_s
+    a = torch.load(model_dir + 'net_' + ep_s + '.pth', map_location='cpu')
     net.load_state_dict(a)
     # dr_dataset_test = DRDataset(root_img='data/cls/',phase='Test',
     #     img_size=1024, num_class=2, transform=False,fold=fold)
-    dr_dataset_test = DRDataset_Multidata_factor_5(
+    dr_dataset_test = DrdatasetMultidataFactor5(
         root_img=set_dir,
         root_seg1=disk_dir,
         root_seg2=lesion_dir,
         xlsx_path=xlsx_path,
         phase='Test',
-        img_size=img_size, num_class=num_class, transform=False, fold=fold, isolate=isolate, if_after=if_after,
+        img_size=img_size, num_class=num_class, transform=False, isolate=isolate, if_after=if_after,
         if_cam=True)
     loader_test = DataLoader(dr_dataset_test, batch_size=1, num_workers=num_thread, shuffle=False)
     test_bar = tqdm(loader_test)

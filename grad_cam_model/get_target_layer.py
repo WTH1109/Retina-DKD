@@ -19,7 +19,7 @@ def get_nn_target_layer(model, model_name):
         target_layer.append(model.feature_alpha)
     elif model_name == 'resnet-wam-concat-independence_net-t4':
         target_layer.append(model.features_x[-1])
-    elif model_name == 'm3_n':
+    elif model_name == 'm3_n' or model_name == 'm3' or model_name == 'TransMUF':
         target_layer.append(model.features_x.ResNet_Module.layer4)
     elif 'transformer' in model_name:
         target_layer.append(model.transformer_model.norm)

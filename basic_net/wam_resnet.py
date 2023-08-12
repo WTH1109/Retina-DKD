@@ -1,6 +1,5 @@
 import torch.utils.model_zoo as model_zoo
-
-from seg_net import feature_match
+from basic_net.segnet import FeatureMatch
 from basic_net.wam_block import *
 
 __all__ = ['ResNet_wam', 'resnet18', 'resnet34_wam', 'resnet50', 'resnet101',
@@ -376,15 +375,15 @@ class ResNet_wam_feature(nn.Module):
         else:
             self.layer4 = self._make_layer(block, block_wam, planes=512, block_num=layers[3], stride=2)
 
-        self.featureCNN_w1 = feature_match(64, 64, downsample=1)
-        self.featureCNN_w2 = feature_match(64, 128, downsample=2)
-        self.featureCNN_w3 = feature_match(64, 256, downsample=4)
-        self.featureCNN_w4 = feature_match(64, 512, downsample=8)
+        self.featureCNN_w1 = FeatureMatch(64, 64, downsample=1)
+        self.featureCNN_w2 = FeatureMatch(64, 128, downsample=2)
+        self.featureCNN_w3 = FeatureMatch(64, 256, downsample=4)
+        self.featureCNN_w4 = FeatureMatch(64, 512, downsample=8)
 
-        self.featureCNN_b1 = feature_match(64, 64, downsample=1)
-        self.featureCNN_b2 = feature_match(64, 128, downsample=2)
-        self.featureCNN_b3 = feature_match(64, 256, downsample=4)
-        self.featureCNN_b4 = feature_match(64, 512, downsample=8)
+        self.featureCNN_b1 = FeatureMatch(64, 64, downsample=1)
+        self.featureCNN_b2 = FeatureMatch(64, 128, downsample=2)
+        self.featureCNN_b3 = FeatureMatch(64, 256, downsample=4)
+        self.featureCNN_b4 = FeatureMatch(64, 512, downsample=8)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

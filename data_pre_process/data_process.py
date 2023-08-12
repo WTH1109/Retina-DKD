@@ -16,16 +16,19 @@ import platform
 import numpy as np
 from torch.utils.data import Dataset
 from torch.utils.data._utils.collate import default_collate_err_msg_format, default_collate, np_str_obj_array_pattern
-from xlsx_process import get_id, read_xlsx_5
-sysstr = platform.system()
+from data_pre_process.xlsx_process import get_id, read_xlsx_5
+
 from torchvision.transforms import *
 from PIL import Image
 import transform.transforms_group as our_transform
 from torchvision.transforms import Compose
 import torchvision.transforms.functional as trf
 
+systray = platform.system()
+
 normal_num = 1.0
 trans_num = 0
+
 
 # Data Augment
 def train_transform(degree=180):
@@ -139,12 +142,11 @@ class DRDataset(Dataset):
      augment：是否需要图像增强
     """
 
-    def __init__(self, root_img, phase, img_size, num_class, transform=False, fold='0', isolate=False, if_after=False):
+    def __init__(self, root_img, phase, img_size, num_class, transform=False, isolate=False, if_after=False):
         # 这个list存放所有图像的地址
         self.phase = phase
         self.image_files = []
         self.root_img = root_img
-        self.fold = fold
 
         if not isolate:
             if self.phase == 'Train' or self.phase == 'Test':
@@ -205,15 +207,13 @@ class DRDataset(Dataset):
         return len(self.image_files)
 
 
-
-
-class DRDataset_Multidata_factor_5(Dataset):
+class DrdatasetMultidataFactor5(Dataset):
     """
      root：图像存放地址根路径
      augment：是否需要图像增强
     """
 
-    def __init__(self, root_img, root_seg1, root_seg2, xlsx_path, phase, img_size, num_class, transform=False, fold='0',
+    def __init__(self, root_img, root_seg1, root_seg2, xlsx_path, phase, img_size, num_class, transform=False,
                  isolate=False, if_after=False, if_cam=False):
         # 这个list存放所有图像的地址
         self.phase = phase
@@ -223,7 +223,6 @@ class DRDataset_Multidata_factor_5(Dataset):
         self.root_img = root_img
         self.root_seg1 = root_seg1
         self.root_seg2 = root_seg2
-        self.fold = fold
         self.if_cam = if_cam
 
         self.ID_Search = {}
@@ -347,7 +346,7 @@ class DRDataset_Multidata_factor_5(Dataset):
                     np.array(-1)), torch.from_numpy(np.array(-1))
 
         return torch.from_numpy(np.array(image)), torch.from_numpy(np.array(seg_1)), torch.from_numpy(np.array(seg_2)), \
-               torch.from_numpy(np.array(non_invasive)).to(torch.float32), torch.from_numpy(
+            torch.from_numpy(np.array(non_invasive)).to(torch.float32), torch.from_numpy(
             np.array(invasive)).to(torch.float32), torch.from_numpy(
             np.array(label)).long(), self.image_files[index], torch.from_numpy(np.array(lesion_type)).long()
 
@@ -610,7 +609,7 @@ if __name__ == "__main__":
     dr_dataset_train = DRDataset(
         root_img='data/cls/',
         phase='Test',
-        img_size=1024, num_class=2, transform=False, fold=4)
+        img_size=1024, num_class=2, transform=False)
     print(dr_dataset_train.image_files[0])
 
     # loader_test = DataLoader(dr_dataset_train, batch_size=1, num_workers=3, shuffle=False)

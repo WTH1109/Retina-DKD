@@ -1,22 +1,21 @@
-import argparse
-import os
-
 import matplotlib
+from data_pre_process.data_process import DrdatasetMultidataFactor5
 import numpy as np
-import pandas as pd
+import os
 import torch
-import torch.cuda
-from matplotlib import pyplot as plt
-from sklearn import metrics
-from test_file.bootstrap_ci import my_bootstrap_ci_model
 from torch.utils.data import DataLoader
+from matplotlib import pyplot as plt
+import torch.cuda
 from tqdm import tqdm
-from data_pre_process.xlsx_process import test_data_write_xlsx
+from sklearn import metrics
+import argparse
+import pandas as pd
 
-from data_pre_process.data_process import DRDataset
-from network import KeNet
+from network import KeNetMultFactorNew
+from test_file.bootstrap_ci import my_bootstrap_ci_model
+from data_pre_process.xlsx_process import test_data_write_xlsx, get_id
 
-parser = argparse.ArgumentParser(description='Write control')
+parser = argparse.ArgumentParser(description='test_fusion')
 parser.add_argument('-s', '--set', type=str, required=True, help='Dataset name')
 parser.add_argument('-m', '--model_name', type=str, required=True, help='Model name')
 parser.add_argument('-x', '--xlsx_name', type=str, required=True, help='xlsx name')
@@ -30,6 +29,7 @@ parser.add_argument('-el', '--ep_left', type=int, required=False, default=1, hel
 parser.add_argument('-er', '--ep_right', type=int, required=False, default=1, help="test end epoc")
 parser.add_argument('-l', '--layer', type=int, required=False, default=1, help="resnet layer")
 parser.add_argument('-df', '--dataset', type=str, required=False, default='', help="the number of model")
+parser.add_argument('-lb', '--lamb', type=float, required=False, default=1, help="the weight of seg image")
 pars = parser.parse_args()
 
 if 1:
@@ -43,16 +43,16 @@ if pars.wam == 'True' or pars.wam == 'true':
 else:
     windows_attention = False
 
-net = KeNet(classes_num=2, basic_model=basic_model, windows_attention=windows_attention,
-            pretrain=False
-            , windows_num=pars.win_num, initial_method="Uniform", k=0.8, layer_num=pars.layer).cuda(
+net = KeNetMultFactorNew(classes_num=2, basic_model=basic_model, windows_attention=windows_attention,
+                         pretrain=False
+                         , windows_num=pars.win_num, initial_method="Uniform", k=0.8,
+                         layer_num=pars.layer, lb_weight=pars.lamb).cuda(
     device_ids[0])
 
 img_size = 1024
 num_class = 2
 dataset = 'DKD'
 num_thread = 8
-
 
 main_dataset = 'data/cls' + pars.dataset + '/'
 Prospective = 'data_test/Prospective/fundus/Prospective/'
@@ -133,7 +133,6 @@ Total_Sen_ci = []
 Total_F1_Score_ci = []
 Total_AUC_ci = []
 
-
 distribution_scatter_0 = []
 distribution_scatter_1 = []
 
@@ -150,8 +149,11 @@ def main():
                 ep_s = '0' + ep_s
             a = torch.load(model_dir + 'net_' + ep_s + '.pth', map_location='cpu')
             net.load_state_dict(a)
-            dr_dataset_test = DRDataset(
+            dr_dataset_test = DrdatasetMultidataFactor5(
                 root_img=set_dir,
+                root_seg1=disk_dir,
+                root_seg2=lesion_dir,
+                xlsx_path=xlsx_path,
                 phase='Test',
                 img_size=img_size, num_class=num_class, transform=False, isolate=isolate, if_after=if_after)
             loader_test = DataLoader(dr_dataset_test, batch_size=1, num_workers=num_thread, shuffle=False)
@@ -160,29 +162,72 @@ def main():
             with torch.no_grad():
                 label_all = []
                 predicted_all = []
+                usr_ID = {}
+                usr_label = {}
                 tp = 0
                 tn = 0
                 fp = 0
                 fn = 0
                 for packs in test_bar:
                     net.eval()
-                    images, labels = packs[0].cuda(device_ids[0]), packs[1].cuda(device_ids[0])
-                    outputs = net(images)
+                    images, seg1, seg2, non_inv_fac, inv_fac, labels, image_path = packs[0].cuda(device_ids[0]), packs[
+                        1].cuda(
+                        device_ids[0]), packs[2].cuda(device_ids[0]), packs[3].cuda(device_ids[0]), packs[4].cuda(
+                        device_ids[0]), packs[5].cuda(device_ids[0]), packs[6]
+                    if images[0].equal(torch.from_numpy(np.array(-1)).cuda(device_ids[0])):
+                        continue
+                    outputs = net(images, seg1, seg2, non_inv_fac, inv_fac)
+                    outputs = torch.softmax(outputs, dim=1)
                     predicted_all.append(outputs.detach().cpu().numpy()[0][1])
                     _, predicted = torch.max(outputs.data, 1)
+                    # predicted = torch.gt(outputs.data, 0.7)
 
                     labels = labels.cpu().numpy()
                     label_all.append(labels[0])
                     predicted = predicted.cpu().numpy()
-                    for i_test in range(1):
-                        if labels[i_test] == 1 and predicted[i_test] == 1:
-                            tp += 1
-                        if labels[i_test] == 1 and predicted[i_test] == 0:
-                            fn += 1
-                        if labels[i_test] == 0 and predicted[i_test] == 1:
-                            fp += 1
-                        if labels[i_test] == 0 and predicted[i_test] == 0:
-                            tn += 1
+                    if labels[0] == 0:
+                        distribution_scatter_0.append(torch.softmax(outputs.cpu(), dim=1).numpy()[0][1])
+                    else:
+                        distribution_scatter_1.append(torch.softmax(outputs.cpu(), dim=1).numpy()[0][1])
+                    image_path = image_path[0]
+                    img_name = image_path.split('/')[-1]
+                    ID = get_id(img_name)
+                    if ID not in usr_ID:
+                        usr_ID[ID] = [outputs.detach().cpu().numpy()[0][1]]
+                        usr_label[ID] = labels[0]
+                    else:
+                        usr_ID[ID].append(outputs.detach().cpu().numpy()[0][1])
+
+                    # for i_test in range(1):
+                    #     if labels[i_test] == 1 and predicted[i_test] == 1:
+                    #         tp += 1
+                    #     if labels[i_test] == 1 and predicted[i_test] == 0:
+                    #         fn += 1
+                    #     if labels[i_test] == 0 and predicted[i_test] == 1:
+                    #         fp += 1
+                    #     if labels[i_test] == 0 and predicted[i_test] == 0:
+                    #         tn += 1
+                label_all = []
+                predicted_all = []
+                for ID in usr_ID:
+                    predicted_set = usr_ID[ID]
+                    predicted_label_set = [0 if item < 0.5 else 1 for item in predicted_set]
+                    pre_label = 0 if np.sum(predicted_label_set) < len(predicted_label_set) / 2 else 1
+                    if np.sum(predicted_label_set) == len(predicted_label_set) / 2:
+                        pre_label = round(np.sum(predicted_set) / len(predicted_set))
+                    # predicted_avg = round(np.sum(predicted_set) / len(predicted_set))
+                    predicted_avg = min(predicted_set) if pre_label == 0 else max(predicted_set)
+                    labels_now = usr_label[ID]
+                    label_all.append(labels_now)
+                    predicted_all.append(predicted_avg)
+                    if labels_now == 1 and pre_label == 1:
+                        tp += 1
+                    if labels_now == 1 and pre_label == 0:
+                        fn += 1
+                    if labels_now == 0 and pre_label == 1:
+                        fp += 1
+                    if labels_now == 0 and pre_label == 0:
+                        tn += 1
 
                 Acc = (tp + tn) / (tp + tn + fp + fn)
                 print('epoc:%d acc:%f' % (ep, Acc * 100))
@@ -267,26 +312,7 @@ def main():
 
                 # roc curve
 
-                # fpr, tpr, _ = metrics.roc_curve(y_true=np.array(label_all), y_score=np.array(predicted_all))
-                # plt.figure()
-                # plt.plot(fpr, tpr,
-                #          label='ROC curve of fold ' + str(fold[0]) + ' (AUC=%.3f' % AUC + ')',
-                #          color='black', linestyle='-', linewidth=4)
-                #
-                # plt.plot([0, 1], [0, 1], 'k--', lw=2)
-                # plt.xlim([0.0, 1.0])
-                # plt.ylim([0.0, 1.05])
-                # plt.fill_between(fpr, tpr, facecolor='gray', alpha=0.5)
-                # plt.xlabel('1 - Specificity')
-                # plt.ylabel('Sensitivity')
-                # plt.title('ROC curves')
-                # plt.legend(loc="lower right")
-                # plt.grid()
-                # plt.savefig('isolate_test/ROC/isolate_' + model_name + '_roc_fold' + fold[0] + str(ep) + '.tif')
-
                 fpr, tpr, _ = metrics.roc_curve(y_true=np.array(label_all), y_score=np.array(predicted_all))
-
-
                 data_roc = {'label': np.array(label_all),
                             'pre': np.array(predicted_all)}
                 roc_curve = pd.DataFrame(data=data_roc)
@@ -297,6 +323,25 @@ def main():
                 if not os.path.isdir(roc_data_save_dir):
                     os.mkdir(roc_data_save_dir)
                 roc_curve.to_excel(roc_data_save_dir + dataset + '.xlsx')
+                # plt.rcParams["font.family"] = "Arial"
+                # plt.rcParams["font.weight"] = "bold"
+                # plt.rcParams["axes.labelweight"] = "bold"
+                # plt.figure()
+                # plt.plot(fpr, tpr,
+                #          label='ROC curve of fold ' + str(fold[0]) + ' (AUC=%.3f' % AUC + ')',
+                #          color='black', linestyle='-', linewidth=4)
+                #
+                # plt.plot([0, 1], [0, 1], 'k--', lw=2)
+                # plt.xlim([0.0, 1.0])
+                # plt.ylim([0.0, 1.05])
+                # plt.fill_between(fpr, tpr, facecolor='gray', alpha=0.5)
+                # font_axis_name = {'fontsize': 22, 'weight': 'bold'}
+                # plt.xlabel('1 - Specificity', font_axis_name)
+                # plt.ylabel('Sensitivity', font_axis_name)
+                # plt.title('ROC curves', font_axis_name)
+                # plt.legend(loc="lower right")
+                # plt.grid()
+                # plt.savefig('isolate_test/ROC/isolate_' + model_name + '_roc_fold' + fold[0] + str(ep) + '.tif')
 
     ave_acc = np.average(Total_Acc)
     var_acc = np.var(Total_Acc)
@@ -315,14 +360,20 @@ def main():
 
     print(model_name + ':')
     print(dataset + '--------')
-    print('ave_acc: %.2f%%    var_acc: %.2f%%   ci=[%.2f%% , %.2f%%]' % (ave_acc * 100, var_acc * 100, Total_Acc_ci[0][1]* 100, Total_Acc_ci[0][2]* 100))
-    print('ave_sen: %.2f%%    var_sen: %.2f%%   ci=[%.2f%% , %.2f%%]' % (ave_sen * 100, var_sen * 100, Total_Sen_ci[0][1]* 100, Total_Sen_ci[0][2]* 100))
-    print('ave_spec: %.2f%%   var_spec: %.2f%%  ci=[%.2f%% , %.2f%%]' % (ave_spec * 100, var_spec * 100, Total_Spec_ci[0][1]* 100, Total_Spec_ci[0][2]* 100))
-    print('ave_f1sc: %.2f%%   var_f1sc: %.2f%%  ci=[%.2f%% , %.2f%%]' % (ave_f1_score * 100, var_f1_score * 100, Total_F1_Score_ci[0][1]* 100,  Total_F1_Score_ci[0][2]* 100))
-    print('ave_auc: %.2f%%    var_auc: %.2f%%   ci=[%.2f%% , %.2f%%]' % (ave_auc * 100, var_auc * 100, Total_AUC_ci[0][1]* 100, Total_AUC_ci[0][2]* 100))
+    print('ave_acc: %.2f%%    var_acc: %.2f%%   ci=[%.2f%% , %.2f%%]' % (
+        ave_acc * 100, var_acc * 100, Total_Acc_ci[0][1] * 100, Total_Acc_ci[0][2] * 100))
+    print('ave_sen: %.2f%%    var_sen: %.2f%%   ci=[%.2f%% , %.2f%%]' % (
+        ave_sen * 100, var_sen * 100, Total_Sen_ci[0][1] * 100, Total_Sen_ci[0][2] * 100))
+    print('ave_spec: %.2f%%   var_spec: %.2f%%  ci=[%.2f%% , %.2f%%]' % (
+        ave_spec * 100, var_spec * 100, Total_Spec_ci[0][1] * 100, Total_Spec_ci[0][2] * 100))
+    print('ave_f1sc: %.2f%%   var_f1sc: %.2f%%  ci=[%.2f%% , %.2f%%]' % (
+        ave_f1_score * 100, var_f1_score * 100, Total_F1_Score_ci[0][1] * 100, Total_F1_Score_ci[0][2] * 100))
+    print('ave_auc: %.2f%%    var_auc: %.2f%%   ci=[%.2f%% , %.2f%%]' % (
+        ave_auc * 100, var_auc * 100, Total_AUC_ci[0][1] * 100, Total_AUC_ci[0][2] * 100))
 
     data_all = [ave_acc, var_acc, ave_sen, var_sen, ave_spec, var_spec, ave_f1_score, var_f1_score, ave_auc, var_auc]
-    test_data_write_xlsx(pars.xlsx_name, pars.model_name, pars.set, pars.dataset_num, data_all, pars.model_name_path, len(test_epoch))
+    test_data_write_xlsx(pars.xlsx_name, pars.model_name, pars.set, pars.dataset_num, data_all, pars.model_name_path,
+                         len(test_epoch))
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 import basic_net as basic_net
 import torch.cuda
 
-from basic_net import fusion_img_net, transformer_resnet_wam_se_loc4, fusion_img_net_ablation_trans, fusion_img_net_cnn_weight, \
-    vit_base_patch16_1024_in21k, vit_base_patch32_1024
+from basic_net import fusion_img_net, transformer_resnet_wam_se_loc4, fusion_img_net_ablation_trans, \
+    fusion_img_net_cnn_weight, vit_base_patch16_1024_in21k, vit_base_patch32_1024
 from basic_net.DAFT_networks.vol_networks import DAFT
 from basic_net.wam_block import *
 
@@ -15,19 +15,7 @@ class KeNet(nn.Module):
         self.windows_attention = windows_attention
         self.wamBlock = WamBlock(in_channel=3, out_channel=3, windows_num=windows_num, initial_method=initial_method
                                  , k=k)
-        if self.basic_model == 'resnet':
-            self.resNet1 = basic_net.resnet34(pretrained=pretrain)
-            self.resNet = list(self.resNet1.children())[:-2]
-            self.features = nn.Sequential(*self.resNet)
-            self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-            self.fc = nn.Linear(512, classes_num)
-        elif self.basic_model == 'resnet18':
-            self.resNet1 = basic_net.resnet18()
-            self.resNet = list(self.resNet1.children())[:-2]
-            self.features = nn.Sequential(*self.resNet)
-            self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-            self.fc = nn.Linear(512, classes_num)
-        elif self.basic_model == 'inception':
+        if self.basic_model == 'inception':
             self.inception1 = basic_net.inception_v3(pretrained=pretrain)
             self.inception = list(self.inception1.children())
             self.fc = nn.Linear(2048, classes_num)
@@ -51,19 +39,7 @@ class KeNet(nn.Module):
     def forward(self, x):
         if self.windows_attention:
             x = self.wamBlock(x)
-        if self.basic_model == 'resnet':
-            x = self.features(x)  # 512
-            x = self.avg_pool(x)
-            x = x.view(x.size(0), -1)
-            x = self.fc(x)
-            return x
-        elif self.basic_model == 'resnet18':
-            x = self.features(x)  # 512
-            x = self.avg_pool(x)
-            x = x.view(x.size(0), -1)
-            x = self.fc(x)
-            return x
-        elif self.basic_model == 'resnet-wam':
+        if self.basic_model == 'resnet-wam':
             x = self.features_w(x)  # 512
             x = self.avg_pool_w(x)
             x = x.view(x.size(0), -1)
@@ -223,7 +199,8 @@ class KeNetMultFactorNew(nn.Module):
             return x
 
         if self.basic_model == 'm3' or self.basic_model == 'm3_n' or self.basic_model == 'm3_cnn' or self.basic_model \
-                == 'm3_trans' or self.basic_model == 'm3_cnn_weight' or self.basic_model == 'seg_trans_resnet_wam_se_loc4_m3':
+                == 'm3_trans' or self.basic_model == 'm3_cnn_weight' or \
+                self.basic_model == 'seg_trans_resnet_wam_se_loc4_m3' or self.basic_model == 'TransMUF':
             x_factor = self.MLP_factor_v1_m3(x_non_invasive, x_invasive)
         elif self.basic_model == 'm2' or self.basic_model == 'm2_n' or self.basic_model == 'seg_trans_resnet_wam_se_loc4_m2':
             x_factor = self.MLP_factor_v1_m2(x_non_invasive, x_invasive)
@@ -250,8 +227,7 @@ class KeNetMultFactorNew(nn.Module):
             x = self.fc_w(x, x_factor)
             return x
         elif self.basic_model == 'm3' or self.basic_model == 'm3_cnn_weight' or self.basic_model == 'm3_n' \
-                or self.basic_model == 'm3_cnn' or self.basic_model \
-                == 'm3_trans':
+                or self.basic_model == 'm3_cnn' or self.basic_model == 'm3_trans' or self.basic_model == 'TransMUF':
             x = torch.cat((x, 1 - x_seg1, x_seg2), dim=1)
             x = self.features_x(x)  # 512
             x = self.fc_w(x, x_factor)

@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.optim as optim
-from data_pre_process.data_process import my_default_collate, DRDataset_Multidata_factor_5
+from data_pre_process.data_process import my_default_collate, DrdatasetMultidataFactor5
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -11,13 +11,12 @@ from tqdm import tqdm
 import argparse
 from network import KeNetMultFactorNew
 
-# python train_fusion.py -b m3 -g 0 -pre False -f 0 -w False -n 4 -lr 1 -bc 8 -e 150 -l_num 1 -d _4
+# python train_fusion.py -b TransMUF -g 0 -bc 8 -e 150 -d _4
 
-parser = argparse.ArgumentParser(description='basic net')
+parser = argparse.ArgumentParser(description='train_fusion')
 parser.add_argument('-b', '--basic_net', type=str, required=True, help='basic_net')
 parser.add_argument('-g', '--gpu', type=int, required=True, help='gpu id')
-parser.add_argument('-pre', '--pretrain', type=str, required=True, help='pretrain')
-parser.add_argument('-f', '--fold', type=str, required=True, help='batch size')
+parser.add_argument('-pre', '--pretrain', type=str, required=False, default='False', help='pretrain')
 parser.add_argument('-w', '--wam', type=str, required=False, default=False, help="whether to use windows attention")
 parser.add_argument('-n', '--win_num', type=int, required=False, default=3, help="The windows number")
 parser.add_argument('-lr', '--LR', type=int, required=False, default=1, help="Learning rate")
@@ -36,10 +35,9 @@ dataset = 'DKD'
 num_thread = 8
 device_ids = [args.gpu]
 basic_model = args.basic_net  # inception  densenet resnet
-fold = args.fold
 pretrain = True if args.pretrain == 'True' else False
 
-from config.cls_v3 import *
+from config.train_config import *
 
 if args.wam == 'True' or args.wam == 'true':
     windows_attention = True
@@ -60,7 +58,7 @@ if pretrain:
     model_dict.update(state_dict)
     net.load_state_dict(model_dict)
 # sf:small factor
-model_name = '7.30_contrast_' + basic_model + 'foldn' + args.dataset + '_win_num' + str(args.win_num) + '_lr' + str(
+model_name = 'fusion_' + basic_model + args.dataset + '_win_num' + str(args.win_num) + '_lr' + str(
     args.LR) + '_ep' + str(
     args.epoc) + 'bc_' + str(args.batch) + 'lnum_' + str(args.layer_num)
 if args.wam == "True" or args.wam == "true":
@@ -82,20 +80,20 @@ def main():
         weight=torch.from_numpy(np.array([weight[0], weight[1]])).float().cuda(device_ids[0]))
     optimizer = optim.Adam(net.parameters(), lr=LR * args.LR, weight_decay=weight_decay)
     scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2)
-    dr_dataset_train = DRDataset_Multidata_factor_5(root_img='data/' + 'cls' + args.dataset + '/',
-                                                    root_seg1='data/seg/disk/',
-                                                    root_seg2='data/seg/lesion/',
-                                                    xlsx_path='data/risk_factor_5.xlsx',
-                                                    phase='Train',
-                                                    img_size=img_size, num_class=num_class, transform=True, fold=fold,
-                                                    if_after=True)
-    dr_dataset_test = DRDataset_Multidata_factor_5(
+    dr_dataset_train = DrdatasetMultidataFactor5(root_img='data/' + 'cls' + args.dataset + '/',
+                                                 root_seg1='data/seg/disk/',
+                                                 root_seg2='data/seg/lesion/',
+                                                 xlsx_path='data/risk_factor_5.xlsx',
+                                                 phase='Train',
+                                                 img_size=img_size, num_class=num_class, transform=True,
+                                                 if_after=True)
+    dr_dataset_test = DrdatasetMultidataFactor5(
         root_img='data/' + 'cls' + args.dataset + '/',
         root_seg1='data/seg/disk/',
         root_seg2='data/seg/lesion/',
         xlsx_path='data/risk_factor_5.xlsx',
         phase='Test',
-        img_size=img_size, num_class=num_class, transform=False, fold=fold, if_after=True)
+        img_size=img_size, num_class=num_class, transform=False, if_after=True)
 
     loader_train = DataLoader(dr_dataset_train, batch_size=train_BATCH_SIZE, num_workers=num_thread, shuffle=True,
                               collate_fn=my_default_collate, drop_last=True)
@@ -124,7 +122,6 @@ def main():
                     1].cuda(
                     device_ids[0]), packs[2].cuda(device_ids[0]), packs[3].cuda(device_ids[0]), packs[4].cuda(
                     device_ids[0]), packs[5].cuda(device_ids[0]), packs[7].cuda(device_ids[0])
-                # labels_split =
                 optimizer.zero_grad()
 
                 outputs = net(inputs, seg1, seg2, non_inv_fac, inv_fac)

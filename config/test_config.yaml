@@ -1,0 +1,16 @@
+select_num: 1
+model_name_save_r: 'transMUF'
+
+
+basic_model: 'TransMUF'
+dataset_supple: _dkd
+
+ep_true: 25
+win_num: 3
+lb_weight: 1
+
+xlsx_name_r: 'runs_result.xls'
+dataset_select: [0,1,2,3]
+
+gpu: 0
+

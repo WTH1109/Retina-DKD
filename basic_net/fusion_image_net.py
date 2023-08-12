@@ -9,8 +9,7 @@ from torch import nn
 
 from basic_net import SELayer, Attention, Mlp, DropPath
 
-__all__ = ['fusion_img_net', 'fusion_img_net_ablation_cnn', 'fusion_img_net_ablation_trans', 'fusion_img_net',
-           'fusion_img_net_new_split_img', 'resnet_seg', 'fusion_img_net_cnn_weight']
+__all__ = ['fusion_img_net',  'fusion_img_net_ablation_trans', 'fusion_img_net_cnn_weight']
 
 from basic_net.wam_block import WamBlock
 
@@ -19,7 +18,7 @@ class FusionImgNetLast(nn.Module):
     def __init__(self, block, layers, num_classes=512, image_size=1024, windows_num=3,
                  layer_num=1, initial_method="Uniform", k=0.8, zero_init_residual=False, input_channel=3):
         super(FusionImgNetLast, self).__init__()
-        self.ResNet_Module = ResNet_Module(block, layers, input_channel)
+        self.ResNet_Module = ResnetModule(block, layers, input_channel)
         self.Transformer_Module = TransformerModuleNoShape(image_size, input_channel=input_channel, embed_dim=128)
         self.SE_Fusion_Module = SeFusionModule(mix_in_channel=320)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
@@ -43,8 +42,8 @@ class FusionImgNetCnnWeight(nn.Module):
     def __init__(self, block, layers, num_classes=512, image_size=1024, windows_num=3,
                  layer_num=1, initial_method="Uniform", k=0.8, zero_init_residual=False, input_channel=3):
         super(FusionImgNetCnnWeight, self).__init__()
-        self.ResNet_Module = ResNet_Module(block, layers, input_channel)
-        self.Transformer_Module = Transformer_Module_ablation(image_size, input_channel=input_channel, embed_dim=128)
+        self.ResNet_Module = ResnetModule(block, layers, input_channel)
+        self.Transformer_Module = TransformerModuleAblation(image_size, input_channel=input_channel, embed_dim=128)
         self.SE_Fusion_Module = SeFusionModule(mix_in_channel=320)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.dropout = nn.Dropout(p=0.3)
@@ -68,7 +67,7 @@ class FusionImgNetAblationTrans(nn.Module):
                  layer_num=1, initial_method="Uniform", k=0.8, zero_init_residual=False, input_channel=3,
                  ablation='trans'):
         super(FusionImgNetAblationTrans, self).__init__()
-        self.ResNet_Module = ResNet_Module(block, layers, input_channel)
+        self.ResNet_Module = ResnetModule(block, layers, input_channel)
         self.Transformer_Module = TransformerModuleNoShape(image_size, input_channel=input_channel, embed_dim=128)
         self.SE_Fusion_Module = SeFusionModule(mix_in_channel=64)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
@@ -198,10 +197,10 @@ class TransformerModule(nn.Module):
         return x
 
 
-class Transformer_Module_ablation(nn.Module):
+class TransformerModuleAblation(nn.Module):
 
     def __init__(self, image_size=1024, input_channel=3, embed_dim=512):
-        super(Transformer_Module_ablation, self).__init__()
+        super(TransformerModuleAblation, self).__init__()
 
         self.patch_size = 32
         self.embed_dim = embed_dim
@@ -249,17 +248,17 @@ class Transformer_Module_ablation(nn.Module):
         return x
 
 
-class ResNet_Module(nn.Module):
+class ResnetModule(nn.Module):
 
     def __init__(self, block, layers, input_channel=3, zero_init_residual=False):
-        super(ResNet_Module, self).__init__()
+        super(ResnetModule, self).__init__()
         self.in_planes = 64
         self.conv1 = nn.Conv2d(input_channel, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.wamblock = WamBlock(input_channel, input_channel, windows_num=3)
+        self.max_pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.wam_block = WamBlock(input_channel, input_channel, windows_num=3)
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
@@ -302,7 +301,7 @@ class ResNet_Module(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.maxpool(x)
+        x = self.max_pool(x)
 
         x = self.layer1(x)
         x = self.layer2(x)
@@ -347,16 +346,16 @@ class BasicBlock(nn.Module):
 class Bottleneck(nn.Module):
     expansion = 4
 
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
+    def __init__(self, in_planes, planes, stride=1, down_sample=None):
         super(Bottleneck, self).__init__()
-        self.conv1 = conv1x1(inplanes, planes)
+        self.conv1 = conv1x1(in_planes, planes)
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = conv3x3(planes, planes, stride)
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
-        self.downsample = downsample
+        self.down_sample = down_sample
         self.stride = stride
 
     def forward(self, x):
@@ -373,8 +372,8 @@ class Bottleneck(nn.Module):
         out = self.conv3(out)
         out = self.bn3(out)
 
-        if self.downsample is not None:
-            identity = self.downsample(x)
+        if self.down_sample is not None:
+            identity = self.down_sample(x)
 
         out += identity
         out = self.relu(out)

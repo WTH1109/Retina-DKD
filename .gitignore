@@ -1,1 +1,4 @@
 data/
+model/
+code_seg/model/
+code_seg/seg/

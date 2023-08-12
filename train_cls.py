@@ -12,12 +12,12 @@ from tqdm import tqdm
 
 from data_pre_process.data_process import DRDataset
 
-# python train_cls.py -b resnet-wam -g 0 -pre False -f 0 -w True -n 3 -lr 1 -bc 4 -e 800 -l_num 1 -d _4
-parser = argparse.ArgumentParser(description='basic net')
+# python train_cls.py -b resnet-wam -g 0  -bc 8 -e 150 -d _4
+
+parser = argparse.ArgumentParser(description='train_cls')
 parser.add_argument('-b', '--basic_net', type=str, required=True, help='basic_net')
 parser.add_argument('-g', '--gpu', type=int, required=True, help='gpu id')
-parser.add_argument('-pre', '--pretrain', type=str, required=True, help='pretrain')
-parser.add_argument('-f', '--fold', type=str, required=True, help='batch size')
+parser.add_argument('-pre', '--pretrain', type=str, required=False, default='False', help='pretrain')
 parser.add_argument('-w', '--wam', type=str, required=False, default=False, help="whether to use windows attention")
 parser.add_argument('-n', '--win_num', type=int, required=False, default=3, help="The windows number")
 parser.add_argument('-lr', '--LR', type=int, required=False, default=1, help="Learning rate")
@@ -25,8 +25,8 @@ parser.add_argument('-bc', '--batch', type=int, required=False, default=4, help=
 parser.add_argument('-e', '--epoc', type=int, required=False, default=800, help="epoc_num")
 parser.add_argument('-l_num', '--layer_num', type=int, required=False, default=1, help="the num of resnet wam layer")
 parser.add_argument('-ld', '--load_model', type=int, required=False, default='-1', help="the number of model")
+parser.add_argument('-d', '--dataset', type=str, required=False, default='', help="dataset describe")
 parser.add_argument('-pth', '--pre_path', type=str, required=False, default='', help="pretrain model path")
-parser.add_argument('-d', '--dataset', type=str, required=False, default='', help="the number of model")
 args = parser.parse_args()
 
 EPOCH = args.epoc
@@ -37,17 +37,15 @@ dataset = 'DKD'
 num_thread = 8
 device_ids = [2, 3]
 basic_model = args.basic_net  # inception  densenet resnet
-fold = args.fold
 pretrain = True if args.pretrain == 'True' else False
 
-from config.cls_v3 import *
+from config.train_config import *
 
 if args.wam == 'True' or args.wam == 'true':
     windows_attention = True
 else:
     windows_attention = False
 print(windows_attention)
-
 
 net = KeNet(classes_num=num_class, basic_model=basic_model, windows_attention=windows_attention, pretrain=pretrain
             , windows_num=args.win_num, initial_method="Uniform", k=0.8, layer_num=args.layer_num).cuda(device_ids[0])
@@ -61,8 +59,7 @@ if pretrain:
     model_dict.update(state_dict)
     net.load_state_dict(model_dict)
 
-
-model_name = basic_model + '_2.0_fold' + fold + '_win_num' + str(args.win_num) + '_lr' + str(args.LR) + '_ep' + str(
+model_name = basic_model + '_win_num' + str(args.win_num) + '_lr' + str(args.LR) + '_ep' + str(
     args.epoc) + 'bc_' + str(args.batch) + 'lnum_' + str(args.layer_num) + 'ims_' + str(img_size)
 if args.wam == "True" or args.wam == "true":
     model_name = 'begin_wam_' + model_name
@@ -85,13 +82,9 @@ def main():
     scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2)
 
     dr_dataset_train = DRDataset(root_img='data/' + 'cls' + args.dataset + '/',
-                                                  phase='Train',
-                                                  img_size=img_size, num_class=num_class, transform=True, fold=fold,
-                                                  if_after=True)
-    dr_dataset_test = DRDataset(
-        root_img='data/' + 'cls' + args.dataset + '/',
-        phase='Test',
-        img_size=img_size, num_class=num_class, transform=False, fold=fold, if_after=False)
+                                 phase='Train', img_size=img_size, num_class=num_class, transform=True, if_after=True)
+    dr_dataset_test = DRDataset(root_img='data/' + 'cls' + args.dataset + '/',
+                                phase='Test', img_size=img_size, num_class=num_class, transform=False, if_after=False)
 
     loader_train = DataLoader(dr_dataset_train, batch_size=train_BATCH_SIZE, num_workers=num_thread, shuffle=True)
     loader_test = DataLoader(dr_dataset_test, batch_size=test_BATCH_SIZE, num_workers=num_thread, shuffle=False)
@@ -194,7 +187,6 @@ def main():
 
             scheduler.step()
         writer.close()
-
 
 
 def remove_all_file(path):
