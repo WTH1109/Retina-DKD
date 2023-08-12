@@ -18,7 +18,7 @@ See `requirements.txt`
 
 3. You can choose to build your own training set, named `cls` + `peugeot` . You can change `-d` to specify the training set while training and testing.  But you need to ensure that its file structure is as follows
 
-   <img src="img\tree.png" style="zoom: 30%;" />
+   <img src="img\tree.jpg" style="zoom: 30%;" />
 
 
 
