@@ -18,7 +18,7 @@ See `requirements.txt`
 
 3. You can choose to build your own training set, named `cls` + `peugeot` . You can change `-d` to specify the training set while training and testing.  But you need to ensure that its file structure is as follows
 
-   <img src="D:\Git\Retina-DKD\img\tree.png" style="zoom: 30%;" />
+   <img src="img\tree.png" style="zoom: 30%;" />
 
 
 
@@ -77,9 +77,9 @@ Specific corresponding results of  `dataset_select`  are as follows:
 
 ```python
 dataset_r = ['main', 		  # 0
-			 'Prospective',   # 1
-			 'Multi_center',  # 2
-			 'Non_standard']  # 3
+	'Prospective',   # 1
+	'Multi_center',  # 2
+	'Non_standard']  # 3
 ```
 
 
@@ -135,7 +135,7 @@ Run the grad-cam test program to get a visual image of the network (see Test)
 
 The visualization will be placed under the `Vis_result` folder
 
-<img src="D:\Git\Retina-DKD\img\vis.png" style="zoom: 80%;" />
+<img src="img\vis.png" style="zoom: 80%;" />
 
 
 
