@@ -12,7 +12,7 @@ See `requirements.txt`
 
 ## 2. Dataset
 
-1. The training data and testing data is from the XXX, we will provide `data` and `data_test` , and pre-trained models.
+1. The test data, prospective validation data and nonstandard validation data are completely open access, including clinical data, fundus images and segmentation lesion image.  To obtain the training data , external validation data and pre-trained models ,  you can contact [shengdai26@163.com] or [pansai301@126.com] for password of the shared data in dropbox  [Retina-DKD](https://www.dropbox.com/scl/fi/dw5so6bg45xpy8voh7gtg/Retina-DKD_data-model_1.0.zip?rlkey=va47pglhxvptgnmczes8rzy6k&dl=0).
 
 2. Put `data` and `data_test`  under the root directory 
 
