@@ -59,7 +59,7 @@ class GradCAM:
                  use_cuda=False,
                  device_ids=None):
         if device_ids is None:
-            device_ids = ['0']
+            device_ids = ['cuda:0']
         self.model = model.eval()
         self.target_layers = target_layers
         self.reshape_transform = reshape_transform

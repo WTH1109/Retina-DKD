@@ -258,7 +258,7 @@ class ResnetModule(nn.Module):
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.max_pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.wam_block = WamBlock(input_channel, input_channel, windows_num=3)
+        self.wamblock = WamBlock(input_channel, input_channel, windows_num=3)
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
@@ -321,7 +321,7 @@ class BasicBlock(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes)
         self.bn2 = nn.BatchNorm2d(planes)
-        self.down_sample = down_sample
+        self.downsample = down_sample
         self.stride = stride
 
     def forward(self, x):
@@ -334,8 +334,8 @@ class BasicBlock(nn.Module):
         out = self.conv2(out)
         out = self.bn2(out)
 
-        if self.down_sample is not None:
-            identity = self.down_sample(x)
+        if self.downsample is not None:
+            identity = self.downsample(x)
 
         out += identity
         out = self.relu(out)
@@ -355,7 +355,7 @@ class Bottleneck(nn.Module):
         self.conv3 = conv1x1(planes, planes * self.expansion)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
-        self.down_sample = down_sample
+        self.downsample = down_sample
         self.stride = stride
 
     def forward(self, x):
@@ -372,8 +372,8 @@ class Bottleneck(nn.Module):
         out = self.conv3(out)
         out = self.bn3(out)
 
-        if self.down_sample is not None:
-            identity = self.down_sample(x)
+        if self.downsample is not None:
+            identity = self.downsample(x)
 
         out += identity
         out = self.relu(out)
